@@ -116,7 +116,7 @@ class SwaggerController extends Controller
     private function generatePaths()
     {
         return [
-            '/auth/login' => [
+            '/login' => [
                 'post' => [
                     'tags' => ['Authentication'],
                     'summary' => 'Login user',
@@ -160,7 +160,7 @@ class SwaggerController extends Controller
                     ],
                 ],
             ],
-            '/auth/logout' => [
+            '/logout' => [
                 'post' => [
                     'tags' => ['Authentication'],
                     'summary' => 'Logout user',
