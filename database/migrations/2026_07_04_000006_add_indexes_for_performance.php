@@ -8,16 +8,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('temperature_logs', function (Blueprint $table) {
-            $table->index(['refrigerator_id']);
-            $table->index(['recorded_at']);
-            $table->index(['temperature']);
-        });
+        try {
+            Schema::table('temperature_logs', function (Blueprint $table) {
+                $table->index(['refrigerator_id']);
+                $table->index(['recorded_at']);
+                $table->index(['temperature']);
+            });
+        } catch (\Throwable $e) {
+            // Ignore duplicate index errors on reruns.
+        }
 
-        Schema::table('blood_bags', function (Blueprint $table) {
-            $table->index('expiry_date');
-            $table->index('bag_number');
-        });
+        try {
+            Schema::table('blood_bags', function (Blueprint $table) {
+                $table->index('expiry_date');
+                $table->index('bag_number');
+            });
+        } catch (\Throwable $e) {
+            // Ignore duplicate index errors on reruns.
+        }
     }
 
     public function down(): void
