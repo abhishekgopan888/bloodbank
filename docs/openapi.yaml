@@ -273,26 +273,6 @@ components:
           type: string
           format: date-time
 
-    BloodBank:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        location:
-          type: string
-          nullable: true
-        refrigerators_count:
-          type: integer
-          description: Number of refrigerators in this bank
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
     DashboardStats:
       type: object
       properties:
