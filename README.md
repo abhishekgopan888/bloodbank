@@ -20,7 +20,6 @@ A comprehensive RESTful API for managing blood inventory and real-time refrigera
 - **Authentication**: Laravel Sanctum (token-based)
 - **API Documentation**: OpenAPI 3.0 / Swagger UI
 - **Task Scheduling**: Laravel Queue System
-- **Frontend Build**: Vite, Tailwind CSS
 
 ## 📋 Prerequisites
 

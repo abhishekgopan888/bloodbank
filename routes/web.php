@@ -3,13 +3,8 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json(['message' => 'Blood Bank API']);
 });
-
-// Swagger UI for API docs
-Route::get('/docs', function () {
-    return file_get_contents(public_path('swagger.html'));
-})->name('swagger.ui');
 
 Route::get('/docs/openapi.yaml', function () {
     $path = base_path('docs/openapi.yaml');
