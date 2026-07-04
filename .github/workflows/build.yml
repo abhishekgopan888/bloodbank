@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.2
+        extensions: mysql, xml, curl, json, mbstring, gd, zip
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Get Composer Cache Directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache Composer Dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-composer-
+
+    - name: Install Composer Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --no-dev
+
+    - name: Install Node Dependencies
+      run: npm ci
+
+    - name: Build Frontend Assets
+      run: npm run build
+
+    - name: Create Artifact
+      run: |
+        mkdir -p build
+        cp -r app bootstrap config database routes storage vendor public build/
+        cp artisan composer.json .env.example build/
+        cd build && tar -czf ../bloodbank-build-${{ github.run_number }}.tar.gz .
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bloodbank-build
+        path: bloodbank-build-${{ github.run_number }}.tar.gz
+        retention-days: 30
+
+    - name: Publish Release
+      uses: ncipollo/release-action@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        artifacts: "bloodbank-build-${{ github.run_number }}.tar.gz"
+        token: ${{ secrets.GITHUB_TOKEN }}

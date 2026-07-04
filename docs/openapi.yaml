@@ -1,0 +1,1055 @@
+openapi: 3.0.0
+info:
+  title: Smart Blood Inventory & Temperature Monitoring API
+  version: 1.0.0
+  description: |
+    RESTful API for managing blood inventory and monitoring refrigerator temperatures in blood banks.
+    Features include real-time temperature monitoring, critical alerts, blood bag inventory management,
+    and user role-based access control with role-based filtering.
+  contact:
+    name: Blood Bank Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://api.bloodbank.local/api
+    description: Production server
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+      description: Laravel Sanctum API token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, manager, staff]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@bloodbank.com
+        password:
+          type: string
+          example: password123
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: API access token (Sanctum)
+          example: "1|abcdefghijklmnopqrstuvwxyz"
+        user:
+          $ref: '#/components/schemas/User'
+
+    BloodBag:
+      type: object
+      properties:
+        id:
+          type: integer
+        bag_number:
+          type: string
+          description: Unique bag identifier
+        blood_group:
+          type: string
+          enum: [O-, O+, A-, A+, B-, B+, AB-, AB+]
+        donor_name:
+          type: string
+          nullable: true
+        collection_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        quantity:
+          type: integer
+          description: Quantity in units
+        status:
+          type: string
+          enum: [Available, Reserved, Dispatched, Expired]
+        is_expired:
+          type: boolean
+        refrigerator:
+          type: object
+          properties:
+            id:
+              type: integer
+            identifier:
+              type: string
+            blood_bank:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BloodBagRequest:
+      type: object
+      required:
+        - bag_number
+        - blood_group
+        - quantity
+        - status
+      properties:
+        bag_number:
+          type: string
+          example: "BB-2026-001"
+        blood_group:
+          type: string
+          enum: [O-, O+, A-, A+, B-, B+, AB-, AB+]
+        donor_name:
+          type: string
+          nullable: true
+          example: "John Doe"
+        collection_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        quantity:
+          type: integer
+          minimum: 0
+          example: 450
+        status:
+          type: string
+          enum: [Available, Reserved, Dispatched, Expired]
+        refrigerator_id:
+          type: integer
+          nullable: true
+
+    BloodBank:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        refrigerators_count:
+          type: integer
+          description: Number of refrigerators in this bank
+        refrigerators:
+          type: array
+          items:
+            $ref: '#/components/schemas/Refrigerator'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BloodBankRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Central Blood Bank"
+        location:
+          type: string
+          nullable: true
+          example: "123 Medical Center Drive"
+
+    Refrigerator:
+      type: object
+      properties:
+        id:
+          type: integer
+        identifier:
+          type: string
+          description: Unique refrigerator identifier
+        status:
+          type: string
+        blood_bank:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RefrigeratorRequest:
+      type: object
+      required:
+        - identifier
+      properties:
+        identifier:
+          type: string
+          example: "REF-001"
+        blood_bank_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          nullable: true
+
+    TemperatureLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        refrigerator_id:
+          type: integer
+        temperature:
+          type: number
+          format: float
+          description: Temperature reading in Celsius
+        recorded_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        refrigerator_id:
+          type: integer
+        type:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BloodBank:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        refrigerators_count:
+          type: integer
+          description: Number of refrigerators in this bank
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DashboardStats:
+      type: object
+      properties:
+        total_bags:
+          type: integer
+        available_by_group:
+          type: object
+          description: Count of available bags by blood group
+        refrigerator_health_score:
+          type: number
+          format: float
+          description: Health score 0-100
+        critical_alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        average_temperature_today:
+          type: number
+          format: float
+        total_expired_bags:
+          type: integer
+        active_refrigerators:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+
+security:
+  - sanctum: []
+
+paths:
+  /login:
+    post:
+      summary: User Login
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: API token for subsequent requests
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /logout:
+    post:
+      summary: User Logout
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /blood-bags:
+    get:
+      summary: List all blood bags
+      tags: [Blood Bags]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: List of blood bags with pagination
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodBag'
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+
+    post:
+      summary: Create a new blood bag
+      tags: [Blood Bags]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [blood_group, quantity, collection_date, expiry_date, refrigerator_id]
+              properties:
+                blood_group:
+                  type: string
+                  enum: [O-, O+, A-, A+, B-, B+, AB-, AB+]
+                quantity:
+                  type: number
+                collection_date:
+                  type: string
+                  format: date
+                expiry_date:
+                  type: string
+                  format: date
+                refrigerator_id:
+                  type: integer
+                status:
+                  type: string
+                  enum: [available, reserved, used, expired]
+                  default: available
+      responses:
+        '201':
+          description: Blood bag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBag'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /blood-bags/{id}:
+    get:
+      summary: Get a specific blood bag
+      tags: [Blood Bags]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Blood bag details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBag'
+        '404':
+          description: Blood bag not found
+
+    put:
+      summary: Update a blood bag
+      tags: [Blood Bags]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: number
+                status:
+                  type: string
+                  enum: [available, reserved, used, expired]
+      responses:
+        '200':
+          description: Blood bag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBag'
+
+    delete:
+      summary: Delete a blood bag
+      tags: [Blood Bags]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Blood bag deleted
+        '404':
+          description: Blood bag not found
+
+  /blood-bags-expiring:
+    get:
+      summary: Get blood bags expiring within 24 hours
+      tags: [Blood Bags]
+      responses:
+        '200':
+          description: List of blood bags expiring soon
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodBag'
+
+  /blood-bags-expired:
+    get:
+      summary: Get expired blood bags
+      tags: [Blood Bags]
+      responses:
+        '200':
+          description: List of expired blood bags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodBag'
+
+  /blood-bags-near-risk-percentage:
+    get:
+      summary: Get percentage of blood bags nearing expiration
+      tags: [Blood Bags]
+      responses:
+        '200':
+          description: Near-risk percentage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  near_risk_percentage:
+                    type: number
+                    format: float
+
+  /refrigerators:
+    get:
+      summary: List all refrigerators
+      tags: [Refrigerators]
+      responses:
+        '200':
+          description: List of refrigerators
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Refrigerator'
+
+    post:
+      summary: Create a new refrigerator
+      tags: [Refrigerators]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, model, blood_bank_id, optimal_temperature]
+              properties:
+                name:
+                  type: string
+                model:
+                  type: string
+                blood_bank_id:
+                  type: integer
+                optimal_temperature:
+                  type: number
+                  format: float
+                status:
+                  type: string
+                  enum: [active, inactive, maintenance]
+                  default: active
+      responses:
+        '201':
+          description: Refrigerator created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refrigerator'
+
+  /refrigerators/{id}:
+    get:
+      summary: Get a specific refrigerator
+      tags: [Refrigerators]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Refrigerator details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refrigerator'
+
+    put:
+      summary: Update a refrigerator
+      tags: [Refrigerators]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                model:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, inactive, maintenance]
+                optimal_temperature:
+                  type: number
+                  format: float
+      responses:
+        '200':
+          description: Refrigerator updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refrigerator'
+
+    delete:
+      summary: Delete a refrigerator
+      tags: [Refrigerators]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Refrigerator deleted
+
+  /refrigerators/{id}/temperature-logs:
+    post:
+      summary: Record temperature log for a refrigerator
+      tags: [Temperature Monitoring]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [temperature]
+              properties:
+                temperature:
+                  type: number
+                  format: float
+                  description: Temperature in Celsius
+                humidity:
+                  type: number
+                  format: float
+                  description: Humidity percentage (optional)
+      responses:
+        '201':
+          description: Temperature log recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureLog'
+
+  /refrigerators/{id}/temperature-stats:
+    get:
+      summary: Get today's temperature statistics for a refrigerator
+      tags: [Temperature Monitoring]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Temperature statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  min_temperature:
+                    type: number
+                    format: float
+                  max_temperature:
+                    type: number
+                    format: float
+                  avg_temperature:
+                    type: number
+                    format: float
+                  reading_count:
+                    type: integer
+                  status:
+                    type: string
+                    enum: [normal, warning, critical]
+
+  /blood-banks:
+    get:
+      summary: List all blood banks
+      tags: [Blood Banks]
+      responses:
+        '200':
+          description: List of blood banks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BloodBank'
+
+    post:
+      summary: Create a new blood bank
+      tags: [Blood Banks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, address, phone, email]
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  default: active
+      responses:
+        '201':
+          description: Blood bank created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBank'
+
+  /blood-banks/{id}:
+    get:
+      summary: Get a specific blood bank
+      tags: [Blood Banks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Blood bank details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBank'
+
+    put:
+      summary: Update a blood bank
+      tags: [Blood Banks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Blood bank updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBank'
+
+    delete:
+      summary: Delete a blood bank
+      tags: [Blood Banks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Blood bank deleted
+
+  /alerts:
+    get:
+      summary: List all alerts
+      tags: [Alerts]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [critical_temperature, low_inventory, expiring_soon]
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+
+  /alerts/{id}:
+    get:
+      summary: Get a specific alert
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+
+  /alerts/{id}/resolve:
+    post:
+      summary: Mark an alert as resolved
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+
+  /users:
+    get:
+      summary: List all users
+      tags: [Users]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+    post:
+      summary: Create a new user
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                role:
+                  type: string
+                  enum: [admin, manager, staff]
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}/assign-bank:
+    post:
+      summary: Assign user to a blood bank
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [blood_bank_id]
+              properties:
+                blood_bank_id:
+                  type: integer
+      responses:
+        '200':
+          description: User assigned to blood bank
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /users/{id}/remove-bank:
+    post:
+      summary: Remove user from a blood bank
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [blood_bank_id]
+              properties:
+                blood_bank_id:
+                  type: integer
+      responses:
+        '200':
+          description: User removed from blood bank
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /dashboard:
+    get:
+      summary: Get dashboard analytics and statistics
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
