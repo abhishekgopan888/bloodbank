@@ -16,7 +16,7 @@ class TemperatureLogController extends Controller
      */
     public function index()
     {
-        return TemperatureLog::latest()->paginate(50);
+        return TemperatureLog::query()->latest()->paginate(50);
     }
 
     /**
@@ -81,7 +81,8 @@ class TemperatureLogController extends Controller
         $todayStart = now()->startOfDay();
         $todayEnd = now()->endOfDay();
 
-        $query = TemperatureLog::where('refrigerator_id', $id)
+        $query = TemperatureLog::query()
+            ->where('refrigerator_id', $id)
             ->whereBetween('recorded_at', [$todayStart, $todayEnd]);
 
         $total = $query->count();
@@ -89,21 +90,27 @@ class TemperatureLogController extends Controller
         $max = $query->max('temperature') ?: 0;
         $min = $query->min('temperature') ?: 0;
 
-        $unsafeMinutes = TemperatureLog::where('refrigerator_id', $id)
-            ->whereBetween('recorded_at', [$todayStart, $todayEnd])
+        $unsafeMinutes = (clone $query)
             ->where('temperature', '>', 6)
+            ->count();
+
+        $criticalMinutes = (clone $query)
+            ->where('temperature', '>', 8)
             ->count();
 
         $risk = $total > 0 ? ($unsafeMinutes / $total) * 100 : 0;
 
         return response()->json([
             'refrigerator_id' => $id,
+            'refrigerator_identifier' => $refrigerator->identifier,
             'average' => round($avg, 2),
-            'highest' => $max,
-            'lowest' => $min,
+            'highest' => round($max, 2),
+            'lowest' => round($min, 2),
             'unsafe_minutes' => $unsafeMinutes,
+            'critical_minutes' => $criticalMinutes,
             'total_minutes' => $total,
             'risk_percentage' => round($risk, 2),
+            'status' => $risk >= 20 ? 'warning' : 'safe',
         ]);
     }
 }

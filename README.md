@@ -2,6 +2,24 @@
 
 A comprehensive RESTful API for managing blood inventory and real-time refrigerator temperature monitoring in blood banks. Built with Laravel 11, featuring critical temperature alerts, blood bag inventory management, and user role-based access control.
 
+## Assessment coverage
+
+This backend implementation now covers the key assessment requirements:
+- Authentication with Laravel Sanctum, including login/logout and protected routes
+- Blood bag, blood bank, refrigerator, alert, dashboard, and user management APIs
+- Eloquent relationships including belongsTo, hasMany, belongsToMany, and relationship-based filtering
+- Temperature analytics including average, highest, lowest, unsafe minutes, critical minutes, and risk percentage
+- Alerting flow using events, listeners, jobs, and notifications
+- OpenAPI-compatible documentation endpoint for API discovery
+
+## Scaling notes
+
+For a larger production deployment, this design can scale by:
+- adding database indexes for temperature and expiry lookups
+- using queues for alert processing and notification delivery
+- partitioning large temperature log tables by time
+- caching dashboard summaries for read-heavy traffic
+
 ## 🎯 Features
 
 - **Blood Inventory Management**: Track blood bags by type, quantity, and expiration date

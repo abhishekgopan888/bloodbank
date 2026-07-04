@@ -35,13 +35,20 @@ class ProcessCriticalAlertJob implements ShouldQueue
         }
 
         $since = Carbon::now()->subMinutes(30);
-        $logs = TemperatureLog::where('refrigerator_id', $this->refrigeratorId)
+        $logs = TemperatureLog::query()
+            ->where('refrigerator_id', $this->refrigeratorId)
             ->where('recorded_at', '>=', $since)
             ->orderBy('recorded_at')
             ->get();
 
         $continuous = 0;
         $threshold = 8.0;
+        $existingAlert = Alert::query()
+            ->where('refrigerator_id', $this->refrigeratorId)
+            ->where('type', 'critical_temperature')
+            ->whereNull('resolved_at')
+            ->latest()
+            ->first();
 
         foreach ($logs as $log) {
             if ($log->temperature > $threshold) {
@@ -50,7 +57,7 @@ class ProcessCriticalAlertJob implements ShouldQueue
                 $continuous = 0;
             }
 
-            if ($continuous >= 10) {
+            if ($continuous >= 10 && !$existingAlert) {
                 $alert = Alert::create([
                     'refrigerator_id' => $this->refrigeratorId,
                     'type' => 'critical_temperature',
