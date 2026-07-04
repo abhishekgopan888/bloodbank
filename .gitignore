@@ -21,3 +21,14 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.venv
+/coverage
+/.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
+/.cache
+/.pytest_cache
